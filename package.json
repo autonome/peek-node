@@ -1,0 +1,18 @@
+{
+  "name": "peek-node",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "keywords": [],
+  "author": "Dietrich Ayala <me@burrito.space> (https://metafluff.com/)",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "@hono/node-server": "^1.19.6",
+    "hono": "^4.10.7"
+  }
+}
