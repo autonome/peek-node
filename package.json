@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "node --watch index.js"
+    "dev": "node --watch index.js",
+    "test": "node --test test.js"
   },
   "keywords": [],
   "author": "Dietrich Ayala <me@burrito.space> (https://metafluff.com/)",
@@ -13,6 +14,7 @@
   "type": "commonjs",
   "dependencies": {
     "@hono/node-server": "^1.19.6",
+    "better-sqlite3": "^12.5.0",
     "hono": "^4.10.7"
   }
 }
