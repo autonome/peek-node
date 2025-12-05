@@ -16,7 +16,8 @@
       "Bash(cat:*)",
       "Bash(node -e:*)",
       "Bash(npm test)",
-      "Bash(railway logs:*)"
+      "Bash(railway logs:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []
