@@ -249,6 +249,7 @@ describe("Database Tests", () => {
 describe("API Tests", () => {
   let app;
   let db;
+  const TEST_API_KEY = "test-secret-key";
 
   beforeEach(() => {
     // Clean database
@@ -267,12 +268,22 @@ describe("API Tests", () => {
 
     db = require("./db");
 
-    // Create fresh Hono app
+    // Create fresh Hono app with auth
     delete require.cache[require.resolve("./index")];
     const { Hono } = require("hono");
     app = new Hono();
 
-    // Recreate routes (simplified version of index.js)
+    // Auth middleware
+    app.use("*", async (c, next) => {
+      if (c.req.path === "/") return next();
+      const auth = c.req.header("Authorization");
+      if (!auth || auth !== `Bearer ${TEST_API_KEY}`) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+      return next();
+    });
+
+    // Routes
     app.get("/", (c) => c.json({ status: "ok" }));
 
     app.post("/webhook", async (c) => {
@@ -302,6 +313,8 @@ describe("API Tests", () => {
     });
   });
 
+  const authHeaders = { Authorization: `Bearer ${TEST_API_KEY}` };
+
   after(() => {
     const testDb = path.join(__dirname, "peek.db");
     if (fs.existsSync(testDb)) {
@@ -313,6 +326,30 @@ describe("API Tests", () => {
     if (fs.existsSync(testDb + "-shm")) {
       fs.unlinkSync(testDb + "-shm");
     }
+  });
+
+  describe("Auth", () => {
+    it("should allow health check without auth", async () => {
+      const res = await app.request("/");
+      assert.strictEqual(res.status, 200);
+    });
+
+    it("should reject requests without auth", async () => {
+      const res = await app.request("/urls");
+      assert.strictEqual(res.status, 401);
+    });
+
+    it("should reject requests with wrong key", async () => {
+      const res = await app.request("/urls", {
+        headers: { Authorization: "Bearer wrong-key" },
+      });
+      assert.strictEqual(res.status, 401);
+    });
+
+    it("should accept requests with valid auth", async () => {
+      const res = await app.request("/urls", { headers: authHeaders });
+      assert.strictEqual(res.status, 200);
+    });
   });
 
   describe("GET /", () => {
@@ -329,7 +366,7 @@ describe("API Tests", () => {
     it("should save URLs from webhook payload", async () => {
       const res = await app.request("/webhook", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           urls: [
             { url: "https://example1.com", tags: ["tag1"] },
@@ -351,7 +388,7 @@ describe("API Tests", () => {
     it("should handle empty urls array", async () => {
       const res = await app.request("/webhook", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ urls: [] }),
       });
 
@@ -362,7 +399,7 @@ describe("API Tests", () => {
     it("should handle missing urls field", async () => {
       const res = await app.request("/webhook", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({}),
       });
 
@@ -373,7 +410,7 @@ describe("API Tests", () => {
     it("should skip items without url field", async () => {
       const res = await app.request("/webhook", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           urls: [
             { url: "https://valid.com" },
@@ -392,7 +429,7 @@ describe("API Tests", () => {
     it("should return saved URLs", async () => {
       db.saveUrl("https://example.com", ["tag1"]);
 
-      const res = await app.request("/urls");
+      const res = await app.request("/urls", { headers: authHeaders });
       const json = await res.json();
 
       assert.strictEqual(res.status, 200);
@@ -402,7 +439,7 @@ describe("API Tests", () => {
     });
 
     it("should return empty array when no URLs", async () => {
-      const res = await app.request("/urls");
+      const res = await app.request("/urls", { headers: authHeaders });
       const json = await res.json();
 
       assert.deepStrictEqual(json.urls, []);
@@ -415,7 +452,7 @@ describe("API Tests", () => {
       db.saveUrl("https://example2.com", ["common"]);
       db.saveUrl("https://example3.com", ["rare"]);
 
-      const res = await app.request("/tags");
+      const res = await app.request("/tags", { headers: authHeaders });
       const json = await res.json();
 
       assert.strictEqual(res.status, 200);
@@ -427,7 +464,10 @@ describe("API Tests", () => {
     it("should delete a URL", async () => {
       const id = db.saveUrl("https://example.com");
 
-      const res = await app.request(`/urls/${id}`, { method: "DELETE" });
+      const res = await app.request(`/urls/${id}`, {
+        method: "DELETE",
+        headers: authHeaders,
+      });
       const json = await res.json();
 
       assert.strictEqual(res.status, 200);
@@ -442,7 +482,7 @@ describe("API Tests", () => {
 
       const res = await app.request(`/urls/${id}/tags`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ tags: ["new1", "new2"] }),
       });
 

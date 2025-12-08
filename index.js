@@ -4,6 +4,28 @@ const db = require("./db");
 
 const app = new Hono();
 
+const API_KEY = process.env.API_KEY;
+
+// Auth middleware
+app.use("*", async (c, next) => {
+  // Health check is public
+  if (c.req.path === "/") {
+    return next();
+  }
+
+  if (!API_KEY) {
+    console.warn("WARNING: API_KEY not set, auth disabled");
+    return next();
+  }
+
+  const auth = c.req.header("Authorization");
+  if (!auth || auth !== `Bearer ${API_KEY}`) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  return next();
+});
+
 app.get("/", (c) => {
   return c.json({ status: "ok", message: "Webhook server running" });
 });

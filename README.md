@@ -11,6 +11,16 @@ npm run dev
 
 Server runs on `http://localhost:3000` (or `PORT` env var).
 
+## Authentication
+
+All endpoints except `/` (health check) require a Bearer token:
+
+```
+Authorization: Bearer <API_KEY>
+```
+
+Set the `API_KEY` environment variable on the server. If not set, auth is disabled (for local dev).
+
 ## API
 
 ### Health Check
@@ -72,7 +82,7 @@ SQLite database stored at `./data/peek.db`. Schema matches the iOS app:
 npm test
 ```
 
-Runs 29 tests covering database operations and all API endpoints.
+Runs 33 tests covering database operations, API endpoints, and authentication.
 
 ## Deployment
 
@@ -90,3 +100,4 @@ The `railway.json` configures Nixpacks build with auto-restart on failure.
 |----------|-------------|---------|
 | `PORT` | Server port | `3000` |
 | `DATA_DIR` | Database directory | `./data` |
+| `API_KEY` | Bearer token for auth | (none, auth disabled) |
